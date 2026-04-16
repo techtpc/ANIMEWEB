@@ -65,7 +65,6 @@ export default function VideosPage() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Judul</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Studio</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Kategori</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tags</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tahun</th>
@@ -86,9 +85,6 @@ export default function VideosPage() {
                         )}
                         <span className="font-medium text-gray-900 truncate max-w-xs">{video.title}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {video.studios?.name || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       <div className="flex flex-wrap gap-1">

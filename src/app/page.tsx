@@ -6,14 +6,14 @@ import { Video } from '@/types';
 
 export default async function HomePage() {
   // Ambil data video terbaru
-  const { data: latestVideos } = await supabase
+  const { data: latestVideos, error: latestError } = await supabase
     .from('videos')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(12);
 
   // Ambil data Top 10 minggu ini (berdasarkan views terbanyak - limit 10)
-  const { data: weeklyTopVideos } = await supabase
+  const { data: weeklyTopVideos, error: topError } = await supabase
     .from('videos')
     .select('*')
     .order('views', { ascending: false })
@@ -62,8 +62,14 @@ export default async function HomePage() {
     }
   ];
 
-  const displayLatest = latestVideos && latestVideos.length > 0 ? latestVideos : dummyVideos;
-  const displayTop10 = weeklyTopVideos && weeklyTopVideos.length > 0 ? weeklyTopVideos : dummyVideos.slice(0, 10);
+  // Ensure views field has default value for empty arrays (bootstrap with data if needed)
+  const displayLatest = (latestVideos && latestVideos.length > 0) 
+    ? latestVideos.map(v => ({ ...v, views: v.views || 0 }))
+    : dummyVideos;
+  
+  const displayTop10 = (weeklyTopVideos && weeklyTopVideos.length > 0)
+    ? weeklyTopVideos.map(v => ({ ...v, views: v.views || 0 }))
+    : dummyVideos.slice(0, 10);
 
   return (
     <main className="min-h-screen bg-[#0b0c0f] text-gray-200 flex flex-col">
@@ -94,20 +100,23 @@ export default async function HomePage() {
             <span className="w-1 h-6 bg-blue-600"></span> Top 10 Minggu Ini
           </h2>
           <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-gray-800">
-            {displayTop10?.map((anime: any, idx: number) => (
-              <Link href={`/videos`} key={anime.id}>
-                <div className="flex-shrink-0 w-48 group cursor-pointer">
-                  <div className="relative overflow-hidden rounded-lg aspect-video mb-2">
-                    <img src={anime.thumbnail_url} className="object-cover w-full h-full group-hover:scale-110 transition duration-500" alt={anime.title} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3">
-                      <span className="text-sm font-bold text-blue-400">#{idx + 1}</span>
+            {displayTop10?.map((anime: any, idx: number) => {
+              const href = anime.anime_id ? `/anime/${anime.anime_id}` : `/anime/${anime.id}`;
+              return (
+                <Link href={href} key={anime.id}>
+                  <div className="flex-shrink-0 w-48 group cursor-pointer">
+                    <div className="relative overflow-hidden rounded-lg aspect-video mb-2">
+                      <img src={anime.thumbnail_url} className="object-cover w-full h-full group-hover:scale-110 transition duration-500" alt={anime.title} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col justify-end p-3">
+                        <span className="text-sm font-bold text-blue-400">#{idx + 1}</span>
+                      </div>
                     </div>
+                    <h3 className="text-sm font-semibold truncate group-hover:text-blue-400 transition-colors">{anime.title}</h3>
+                    <p className="text-xs text-gray-400 mt-1">👁️ {anime.views?.toLocaleString() || 0} views</p>
                   </div>
-                  <h3 className="text-sm font-semibold truncate group-hover:text-blue-400 transition-colors">{anime.title}</h3>
-                  <p className="text-xs text-gray-400 mt-1">👁️ {anime.views?.toLocaleString() || 0} views</p>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         </section>
 

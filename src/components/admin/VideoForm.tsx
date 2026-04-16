@@ -134,7 +134,7 @@ export default function VideoForm({ videoId, initialData, onSuccess }: VideoForm
         : [...prev, categoryId]
     );
   };
-
+9;',./'
   const handleSavePlatform = async (platformNum: 1 | 2) => {
     const platform = platformNum === 1 ? platform1 : platform2;
     if (!platform.name.trim() || !platform.url.trim() || !videoId) return;

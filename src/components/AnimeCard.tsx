@@ -2,8 +2,12 @@ import Link from 'next/link';
 import { Video } from '@/types';
 
 export default function AnimeCard({ video }: { video: any }) {
+  // Jika video punya anime_id, link ke anime detail
+  // Jika tidak, link ke video langsung (fallback untuk backward compatibility)
+  const href = video.anime_id ? `/anime/${video.anime_id}` : `/anime/${video.id}`;
+  
   return (
-    <Link href={`/anime/${video.id}`} className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500">
+    <Link href={href} className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500">
       <div className="aspect-[3/4] overflow-hidden relative">
         <img
           src={video.thumbnail_url}
@@ -22,7 +26,7 @@ export default function AnimeCard({ video }: { video: any }) {
         </h3>
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">
-            {video.studios?.name || 'Unknown'}
+            {video.video_categories?.length > 0 ? video.video_categories[0]?.categories?.name : 'Anime'} 
           </span>
           <span className="text-[10px] text-gray-400">
              {Math.floor(video.duration_seconds / 60)}m

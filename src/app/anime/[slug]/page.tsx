@@ -20,11 +20,17 @@ export default function AnimeDetailPage() {
     const loadData = async () => {
       const animeIdentifier = params.slug as string;
       
+      // Normalize slug for querying
+      const normalizedSlug = decodeURIComponent(animeIdentifier)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      
       // Try to fetch anime - could be either slug or ID
       let animeQueryError = true;
       let animeData = null;
       
-      // First try by slug
+      // First try by normalized slug
       const { data: slugData, error: slugError } = await supabase
         .from('anime')
         .select(`
@@ -33,7 +39,7 @@ export default function AnimeDetailPage() {
             genres (id, name, slug)
           )
         `)
-        .eq('slug', animeIdentifier)
+        .eq('slug', normalizedSlug)
         .single();
       
       if (!slugError && slugData) {

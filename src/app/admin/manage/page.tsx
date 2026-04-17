@@ -137,9 +137,9 @@ export default function ManagePage() {
                       <tr key={video.id} className="hover:bg-slate-700 transition">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            {video.thumbnail_url && (
+                            {(video.thumbnail_url || video.anime?.thumbnail_url) && (
                               <img 
-                                src={video.thumbnail_url} 
+                                src={video.thumbnail_url || video.anime?.thumbnail_url}
                                 alt={video.title}
                                 className="w-10 h-10 rounded object-cover"
                               />
@@ -168,7 +168,7 @@ export default function ManagePage() {
                           {video.video_servers?.length || 0} link
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400 text-center">
-                          {video.release_year}
+                          {video.release_year || video.anime?.release_year || '-'}
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex justify-center gap-2">

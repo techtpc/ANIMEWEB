@@ -24,7 +24,16 @@ export async function getVideos() {
       download_url_turbovip_480,
       download_url_turbovip_720,
       download_url_filedon_480,
-      download_url_filedon_720
+      download_url_filedon_720,
+      anime:anime_id (
+        id,
+        title,
+        slug,
+        thumbnail_url,
+        release_year,
+        status,
+        total_episodes
+      )
     `)
     .order('created_at', { ascending: false });
 
@@ -512,4 +521,38 @@ export async function deleteEpisode(id: string) {
     return false;
   }
   return true;
+}
+
+// ===== DASHBOARD STATS =====
+export async function getDashboardStats() {
+  try {
+    // Count total videos
+    const { count: videoCount, error: videoError } = await supabase
+      .from('videos')
+      .select('*', { count: 'exact', head: true });
+
+    // Count total genres
+    const { count: genreCount, error: genreError } = await supabase
+      .from('genres')
+      .select('*', { count: 'exact', head: true });
+
+    // Count total anime
+    const { count: animeCount, error: animeError } = await supabase
+      .from('anime')
+      .select('*', { count: 'exact', head: true });
+
+    if (videoError) console.error('Error counting videos:', videoError);
+    if (genreError) console.error('Error counting genres:', genreError);
+    if (animeError) console.error('Error counting anime:', animeError);
+
+    return {
+      videos: videoCount || 0,
+      genres: genreCount || 0,
+      anime: animeCount || 0,
+      tags: 0, // Placeholder
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return { videos: 0, genres: 0, anime: 0, tags: 0 };
+  }
 }

@@ -15,14 +15,14 @@ export default async function HomePage() {
     .select(selectQuery)
     .eq('status', 'ongoing')
     .order('created_at', { ascending: false })
-    .limit(8);
+    .limit(12);
 
   const { data: completedAnime } = await supabase
     .from('anime')
     .select(selectQuery)
     .eq('status', 'completed')
     .order('created_at', { ascending: false })
-    .limit(8);
+    .limit(12);
 
   return (
     <main className="min-h-screen bg-[#0b0c0f] text-gray-200 flex flex-col">
@@ -45,7 +45,7 @@ export default async function HomePage() {
               <p className="text-gray-400">Belum ada anime ongoing.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {ongoingAnime.map((anime: any) => (
                 <AnimeCard key={anime.id} video={anime} />
               ))}
@@ -69,7 +69,7 @@ export default async function HomePage() {
               <p className="text-gray-400">Belum ada anime completed.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
               {completedAnime.map((anime: any) => (
                 <AnimeCard key={anime.id} video={anime} />
               ))}

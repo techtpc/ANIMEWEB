@@ -1,6 +1,26 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { getDashboardStats } from '@/lib/admin-queries';
+
 export default function AdminDashboard() {
+  const [stats, setStats] = useState({
+    videos: 0,
+    genres: 0,
+    anime: 0,
+    tags: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      const data = await getDashboardStats();
+      setStats(data);
+      setLoading(false);
+    };
+    loadStats();
+  }, []);
+
   return (
     <div className="space-y-8">
       <div>
@@ -13,22 +33,22 @@ export default function AdminDashboard() {
         <div className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white">
           <div className="text-5xl font-bold mb-2">📊</div>
           <h3 className="text-sm font-semibold text-indigo-100">Total Video</h3>
-          <p className="text-3xl font-bold mt-2">-</p>
+          <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.videos}</p>
         </div>
         <div className="bg-gradient-to-br from-purple-600 to-purple-700 p-6 rounded-xl shadow-lg text-white">
           <div className="text-5xl font-bold mb-2">🏷️</div>
           <h3 className="text-sm font-semibold text-purple-100">Kategori</h3>
-          <p className="text-3xl font-bold mt-2">-</p>
+          <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.genres}</p>
         </div>
         <div className="bg-gradient-to-br from-pink-600 to-pink-700 p-6 rounded-xl shadow-lg text-white">
           <div className="text-5xl font-bold mb-2">🔖</div>
-          <h3 className="text-sm font-semibold text-pink-100">Tags</h3>
-          <p className="text-3xl font-bold mt-2">-</p>
+          <h3 className="text-sm font-semibold text-pink-100">Anime</h3>
+          <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.anime}</p>
         </div>
         <div className="bg-gradient-to-br from-rose-600 to-rose-700 p-6 rounded-xl shadow-lg text-white">
           <div className="text-5xl font-bold mb-2">🎬</div>
-          <h3 className="text-sm font-semibold text-rose-100">Studio</h3>
-          <p className="text-3xl font-bold mt-2">-</p>
+          <h3 className="text-sm font-semibold text-rose-100">Tags</h3>
+          <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.tags}</p>
         </div>
       </div>
 

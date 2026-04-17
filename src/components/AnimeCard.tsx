@@ -17,7 +17,7 @@ export default function AnimeCard({ video }: { video: any }) {
     typeof video?.duration_seconds === 'number' ? Math.floor(video.duration_seconds / 60) : null;
   
   return (
-    <Link href={href} className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500">
+    <Link href={href} className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500 hover:shadow-xl">
       <div className="aspect-[3/4] overflow-hidden relative">
         <img
           src={video.thumbnail_url}
@@ -25,23 +25,23 @@ export default function AnimeCard({ video }: { video: any }) {
           className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
         />
         {/* Badge Tahun */}
-        <div className="absolute top-2 left-2 bg-blue-600 text-[10px] font-bold px-2 py-0.5 rounded shadow">
+        <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-bold px-1.5 py-0.5 rounded shadow">
           {video.release_year}
         </div>
       </div>
       
-      <div className="p-3">
-        <h3 className="text-xs font-bold leading-snug line-clamp-2 group-hover:text-blue-400 transition">
+      <div className="p-2">
+        <h3 className="text-[10px] font-bold leading-tight line-clamp-2 group-hover:text-blue-400 transition">
           {video.title}
         </h3>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">
+        <div className="mt-1 flex items-center justify-between gap-1">
+          <span className="text-[8px] text-gray-500 uppercase font-bold tracking-tighter line-clamp-1">
             {genreName}
           </span>
           {durationMinutes !== null ? (
-            <span className="text-[10px] text-gray-400">{durationMinutes}m</span>
+            <span className="text-[8px] text-gray-400 whitespace-nowrap">{durationMinutes}m</span>
           ) : (
-            <span className="text-[10px] text-gray-400">&nbsp;</span>
+            <span className="text-[8px] text-gray-400">&nbsp;</span>
           )}
         </div>
       </div>

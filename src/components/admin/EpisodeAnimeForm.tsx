@@ -255,7 +255,14 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
               <input
                 type="text"
                 value={animeData.title}
-                onChange={(e) => setAnimeData((p) => ({ ...p, title: e.target.value }))}
+                onChange={(e) => {
+                  const newTitle = e.target.value;
+                  const newSlug = newTitle
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-+|-+$/g, '');
+                  setAnimeData((p) => ({ ...p, title: newTitle, slug: newSlug }));
+                }}
                 placeholder="One Piece"
                 className="w-full px-3 py-1.5 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                 required
@@ -271,6 +278,7 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
                 className="w-full px-3 py-1.5 bg-slate-700 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-slate-500"
                 required
               />
+              <p className="text-xs text-slate-400 mt-1">Auto-generated dari judul. Edit jika perlu.</p>
             </div>
             <div>
               <label className="text-xs font-bold text-slate-300 uppercase block mb-1">Tahun</label>

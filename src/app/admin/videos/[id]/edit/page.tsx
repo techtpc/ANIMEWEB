@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import VideoForm from '@/components/admin/VideoForm';
+import EpisodeAnimeForm from '@/components/admin/EpisodeAnimeForm';
 import { getVideoDetail } from '@/lib/queries';
 
 export default function EditVideoPage() {
@@ -47,7 +47,7 @@ export default function EditVideoPage() {
         <p className="text-gray-600 mt-1">{video.title}</p>
       </div>
 
-      <VideoForm videoId={videoId} initialData={video} />
+      <EpisodeAnimeForm videoId={videoId} initialData={video} />
     </div>
   );
 }

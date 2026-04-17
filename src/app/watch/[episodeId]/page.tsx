@@ -1,16 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Episode } from '@/types';
 
-interface Resolution {
-  name: string;
-  label: string;
-  url: string;
-}
+type ServerKey = 'turbovip' | 'filedon';
+type Quality = 480 | 720;
 
 export default function WatchPage() {
   const params = useParams();
@@ -19,61 +16,66 @@ export default function WatchPage() {
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [anime, setAnime] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedServer, setSelectedServer] = useState<any>(null);
-  const [selectedResolution, setSelectedResolution] = useState<string>('');
-
-  // Mock resolutions - dalam praktik akan dari database
-  const mockResolutions: Resolution[] = [
-    { name: '360p', label: '360p (Low)', url: '?quality=360' },
-    { name: '480p', label: '480p (Medium)', url: '?quality=480' },
-    { name: '720p', label: '720p (HD)', url: '?quality=720' },
-    { name: '1080p', label: '1080p (Full HD)', url: '?quality=1080' },
-  ];
+  const [selectedServer, setSelectedServer] = useState<ServerKey>('turbovip');
+  const [selectedQuality, setSelectedQuality] = useState<Quality>(720);
+  const [prevEpisode, setPrevEpisode] = useState<any>(null);
+  const [nextEpisode, setNextEpisode] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
-      // Fetch episode details
+      setLoading(true);
+
       const { data: episodeData, error: episodeError } = await supabase
         .from('videos')
-        .select(`
-          *,
-          video_categories (
-            categories (name)
-          ),
-          video_tags (
-            tags (name)
-          ),
-          video_servers (
-            id,
-            server_name,
-            embed_url
-          )
-        `)
+        .select('*')
         .eq('id', episodeId)
         .single();
 
-      if (episodeError) {
-        // Handle error silently
-      } else if (episodeData) {
-        setEpisode(episodeData);
+      if (episodeError || !episodeData) {
+        setEpisode(null);
+        setAnime(null);
+        setPrevEpisode(null);
+        setNextEpisode(null);
+        setLoading(false);
+        return;
+      }
 
-        // Fetch anime details using anime_id
-        if (episodeData.anime_id) {
-          const { data: animeData } = await supabase
-            .from('anime')
-            .select('*')
-            .eq('id', episodeData.anime_id)
-            .single();
+      setEpisode(episodeData);
 
-          if (animeData) {
-            setAnime(animeData);
-          }
-        }
+      // Fetch anime details using anime_id
+      if (episodeData.anime_id) {
+        const { data: animeData } = await supabase
+          .from('anime')
+          .select('*')
+          .eq('id', episodeData.anime_id)
+          .single();
 
-        // Set default server
-        if (episodeData.video_servers && episodeData.video_servers.length > 0) {
-          setSelectedServer(episodeData.video_servers[0]);
-        }
+        setAnime(animeData);
+      }
+
+      // Fetch prev/next episodes based on episode_number order
+      const currentAnimeId = episodeData.anime_id;
+      const currentNumber = episodeData.episode_number;
+
+      if (currentAnimeId && typeof currentNumber === 'number') {
+        const { data: prevData } = await supabase
+          .from('videos')
+          .select('id, episode_number, episode_title')
+          .eq('anime_id', currentAnimeId)
+          .lt('episode_number', currentNumber)
+          .order('episode_number', { ascending: false })
+          .limit(1);
+
+        const { data: nextData } = await supabase
+          .from('videos')
+          .select('id, episode_number, episode_title')
+          .eq('anime_id', currentAnimeId)
+          .gt('episode_number', currentNumber)
+          .order('episode_number', { ascending: true })
+          .limit(1);
+
+        setPrevEpisode(prevData?.[0] ?? null);
+        setNextEpisode(nextData?.[0] ?? null);
       }
 
       setLoading(false);
@@ -83,6 +85,26 @@ export default function WatchPage() {
       loadData();
     }
   }, [episodeId]);
+
+  const selectedEmbedUrl = useMemo(() => {
+    if (!episode) return null;
+
+    if (selectedServer === 'turbovip') {
+      return selectedQuality === 480 ? episode.embed_url_turbovip_480 : episode.embed_url_turbovip_720;
+    }
+
+    return selectedQuality === 480 ? episode.embed_url_filedon_480 : episode.embed_url_filedon_720;
+  }, [episode, selectedServer, selectedQuality]);
+
+  const selectedDownloadUrl = useMemo(() => {
+    if (!episode) return null;
+
+    if (selectedServer === 'turbovip') {
+      return selectedQuality === 480 ? episode.download_url_turbovip_480 : episode.download_url_turbovip_720;
+    }
+
+    return selectedQuality === 480 ? episode.download_url_filedon_480 : episode.download_url_filedon_720;
+  }, [episode, selectedServer, selectedQuality]);
 
   if (loading) {
     return (
@@ -115,7 +137,7 @@ export default function WatchPage() {
           </Link>
           {anime && (
             <Link
-              href={`/anime/${anime.id}`}
+              href={`/anime/${anime.slug || anime.id}`}
               className="text-blue-400 hover:text-blue-300 transition"
             >
               Kembali ke {anime.title}
@@ -140,10 +162,10 @@ export default function WatchPage() {
           <div className="lg:col-span-3">
             {/* Video Player Container */}
             <div className="bg-black rounded-lg overflow-hidden shadow-lg mb-6">
-              {selectedServer ? (
+              {selectedEmbedUrl ? (
                 <div className="aspect-video w-full bg-gray-900 flex items-center justify-center">
                   <iframe
-                    src={selectedServer.embed_url + (selectedResolution || '')}
+                    src={selectedEmbedUrl}
                     width="100%"
                     height="100%"
                     frameBorder="0"
@@ -153,28 +175,73 @@ export default function WatchPage() {
                 </div>
               ) : (
                 <div className="aspect-video w-full bg-gray-900 flex items-center justify-center">
-                  <p className="text-gray-400">No server available</p>
+                  <p className="text-gray-400">Embed URL belum tersedia untuk pilihan ini</p>
                 </div>
               )}
             </div>
 
-            {/* Resolution Selection */}
-            <div className="bg-[#141519] p-4 rounded border border-gray-800 mb-6">
-              <p className="text-gray-400 text-sm mb-3 font-semibold">Pilih Resolusi:</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {mockResolutions.map((res) => (
+            {/* Server + Quality Selection */}
+            <div className="bg-[#141519] p-4 rounded border border-gray-800 mb-6 space-y-4">
+              <div>
+                <p className="text-gray-400 text-sm mb-3 font-semibold">Pilih Server:</p>
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    key={res.name}
-                    onClick={() => setSelectedResolution(res.url)}
+                    onClick={() => setSelectedServer('turbovip')}
                     className={`py-2 px-3 rounded border transition text-sm font-semibold ${
-                      selectedResolution === res.url
+                      selectedServer === 'turbovip'
                         ? 'bg-blue-600 border-blue-500 text-white'
                         : 'bg-[#1c1e23] border-gray-700 text-gray-300 hover:border-blue-500'
                     }`}
                   >
-                    {res.label}
+                    TurboVIP
                   </button>
-                ))}
+                  <button
+                    onClick={() => setSelectedServer('filedon')}
+                    className={`py-2 px-3 rounded border transition text-sm font-semibold ${
+                      selectedServer === 'filedon'
+                        ? 'bg-blue-600 border-blue-500 text-white'
+                        : 'bg-[#1c1e23] border-gray-700 text-gray-300 hover:border-blue-500'
+                    }`}
+                  >
+                    FileDon
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-gray-400 text-sm mb-3 font-semibold">Pilih Kualitas:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[720, 480].map((q) => (
+                    <button
+                      key={q}
+                      onClick={() => setSelectedQuality(q as Quality)}
+                      className={`py-2 px-3 rounded border transition text-sm font-semibold ${
+                        selectedQuality === q
+                          ? 'bg-blue-600 border-blue-500 text-white'
+                          : 'bg-[#1c1e23] border-gray-700 text-gray-300 hover:border-blue-500'
+                      }`}
+                    >
+                      {q}p
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Download */}
+              <div className="bg-[#1c1e23] border border-gray-700 rounded p-3">
+                <p className="text-gray-300 text-sm font-semibold mb-2">Download ({selectedQuality}p)</p>
+                {selectedDownloadUrl ? (
+                  <a
+                    href={selectedDownloadUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center w-full py-2 px-3 rounded bg-blue-600 hover:bg-blue-700 transition text-sm font-semibold text-white"
+                  >
+                    Download
+                  </a>
+                ) : (
+                  <p className="text-gray-400 text-xs">Download URL belum tersedia untuk pilihan ini.</p>
+                )}
               </div>
             </div>
 
@@ -190,43 +257,36 @@ export default function WatchPage() {
                   <span className="text-gray-400">Views:</span>{' '}
                   <span className="text-white">{episode.views?.toLocaleString() || 0}</span>
                 </p>
-                {episode.video_categories && episode.video_categories.length > 0 && (
-                  <div>
-                    <span className="text-gray-400">Genre: </span>
-                    <span className="text-white">
-                      {episode.video_categories
-                        .map((vc: any) => vc.categories?.name)
-                        .join(', ')}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
-          </div>
 
-          {/* Sidebar - Server Selection */}
-          <div>
-            <div className="bg-[#141519] p-4 rounded border border-gray-800 sticky top-20">
-              <p className="text-gray-400 text-sm mb-3 font-semibold">Pilih Server:</p>
-              <div className="space-y-2">
-                {!episode.video_servers || episode.video_servers.length === 0 ? (
-                  <p className="text-gray-400 text-xs">Belum ada server tersedia</p>
-                ) : (
-                  episode.video_servers.map((server: any) => (
-                    <button
-                      key={server.id}
-                      onClick={() => setSelectedServer(server)}
-                      className={`w-full py-2 px-3 rounded border transition text-sm font-semibold ${
-                        selectedServer?.id === server.id
-                          ? 'bg-blue-600 border-blue-500 text-white'
-                          : 'bg-[#1c1e23] border-gray-700 text-gray-300 hover:border-blue-500'
-                      }`}
-                    >
-                      {server.server_name || 'Server'}
-                    </button>
-                  ))
-                )}
-              </div>
+            {/* Prev/Next */}
+            <div className="mt-6 flex items-center justify-between gap-3">
+              {prevEpisode ? (
+                <Link
+                  href={`/watch/${prevEpisode.id}`}
+                  className="px-4 py-2 bg-[#141519] border border-gray-800 rounded hover:border-blue-500 transition text-sm font-semibold text-gray-200"
+                >
+                  ← Sebelumnya (Ep {prevEpisode.episode_number})
+                </Link>
+              ) : (
+                <span className="px-4 py-2 bg-[#141519] border border-gray-800 rounded text-sm font-semibold text-gray-600">
+                  Tidak ada episode sebelumnya
+                </span>
+              )}
+
+              {nextEpisode ? (
+                <Link
+                  href={`/watch/${nextEpisode.id}`}
+                  className="px-4 py-2 bg-[#141519] border border-gray-800 rounded hover:border-blue-500 transition text-sm font-semibold text-gray-200"
+                >
+                  Berikutnya (Ep {nextEpisode.episode_number}) →
+                </Link>
+              ) : (
+                <span className="px-4 py-2 bg-[#141519] border border-gray-800 rounded text-sm font-semibold text-gray-600">
+                  Tidak ada episode berikutnya
+                </span>
+              )}
             </div>
           </div>
         </div>

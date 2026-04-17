@@ -1,6 +1,6 @@
 'use client';
 
-import VideoForm from '@/components/admin/VideoForm';
+import EpisodeAnimeForm from '@/components/admin/EpisodeAnimeForm';
 
 export default function NewVideoPage() {
   return (
@@ -10,7 +10,7 @@ export default function NewVideoPage() {
         <p className="text-gray-600 mt-1">Buat entri video baru dengan informasi lengkap</p>
       </div>
 
-      <VideoForm />
+      <EpisodeAnimeForm />
     </div>
   );
 }

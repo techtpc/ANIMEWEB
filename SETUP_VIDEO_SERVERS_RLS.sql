@@ -1,44 +1,26 @@
 -- ========================================
--- SETUP VIDEO SERVERS - RLS & INSERT DATA
+-- DEPRECATED: video_servers (replaced by embed/download fields in public.videos)
 -- ========================================
+--
+-- Pada DB v2:
+-- - `public.video_servers` dihapus
+-- - embed/download disimpan langsung di `public.videos`:
+--   embed_url_turbovip_480 / embed_url_turbovip_720
+--   embed_url_filedon_480 / embed_url_filedon_720
+--   download_url_turbovip_480 / download_url_turbovip_720
+--   download_url_filedon_480 / download_url_filedon_720
+--
+-- Contoh update episode (edit ID & URL Anda):
+-- UPDATE public.videos
+-- SET
+--   embed_url_turbovip_480 = 'https://...embed...',
+--   embed_url_turbovip_720 = 'https://...embed...',
+--   embed_url_filedon_480 = 'https://...embed...',
+--   embed_url_filedon_720 = 'https://...embed...',
+--   download_url_turbovip_480 = 'https://...download...',
+--   download_url_turbovip_720 = 'https://...download...',
+--   download_url_filedon_480 = 'https://...download...',
+--   download_url_filedon_720 = 'https://...download...'
+-- WHERE id = 'VIDEO_OR_EPISODE_ID';
 
--- Step 1: Enable RLS on video_servers table
-ALTER TABLE public.video_servers ENABLE ROW LEVEL SECURITY;
-
--- Step 2: Add read policy for public
-CREATE POLICY "Allow public read on video_servers" ON public.video_servers 
-FOR SELECT USING (true);
-
--- Step 3: Allow insert (adjust auth based on your setup)
-CREATE POLICY "Allow insert on video_servers" ON public.video_servers 
-FOR INSERT WITH CHECK (true);
-
--- Step 4: Insert video servers for One Piece
--- GANTI NILAI INI DENGAN MILIK ANDA:
--- video_id: Dari halaman /debug bagian "Videos" - lihat ID One Piece
--- server_name: Nama server (FileDon, TurboVPlay, dsb)
--- embed_url: URL embed lengkap dari provider
-
-INSERT INTO public.video_servers (video_id, server_name, embed_url)
-VALUES 
-  (
-    '686ac3e0-a229-4940-975a-412099cc43ad',  -- GANTI dengan Video ID Anda
-    'FileDon',
-    'https://filedo.org/embed/xxxxx'         -- GANTI dengan URL FileDon Anda
-  ),
-  (
-    '686ac3e0-a229-4940-975a-412099cc43ad',  -- GANTI dengan Video ID Anda
-    'TurboVPlay',
-    'https://turbovplay.com/embed/xxxxx'     -- GANTI dengan URL TurboVPlay Anda
-  );
-
--- Verify data sudah tersimpan
-SELECT 
-  vs.id,
-  vs.server_name,
-  vs.embed_url,
-  vs.video_id,
-  v.title as video_title
-FROM public.video_servers vs
-LEFT JOIN public.videos v ON vs.video_id = v.id
-ORDER BY vs.created_at DESC;
+-- RLS untuk `public.videos` sudah diatur di `supabase-rls-setup.sql`.

@@ -6,10 +6,25 @@ export async function getVideos() {
   const { data, error } = await supabase
     .from('videos')
     .select(`
-      *,
-      video_categories (categories (id, name, slug)),
-      video_tags (tags (id, name)),
-      video_servers (id, server_name, embed_url)
+      id,
+      created_at,
+      anime_id,
+      episode_number,
+      episode_title,
+      season_number,
+      title,
+      thumbnail_url,
+      duration_seconds,
+      views,
+      release_year,
+      embed_url_turbovip_480,
+      embed_url_turbovip_720,
+      embed_url_filedon_480,
+      embed_url_filedon_720,
+      download_url_turbovip_480,
+      download_url_turbovip_720,
+      download_url_filedon_480,
+      download_url_filedon_720
     `)
     .order('created_at', { ascending: false });
 
@@ -70,13 +85,15 @@ export async function deleteVideo(id: string) {
 
 // ===== CATEGORY OPERATIONS =====
 export async function getCategories() {
+  // In DB v2, "categories" & "tags" are removed and replaced by "genres".
+  // Keep this export for compatibility with existing UI until it's refactored.
   const { data, error } = await supabase
-    .from('categories')
+    .from('genres')
     .select('*')
     .order('name');
 
   if (error) {
-    console.error('Error fetching categories:', error);
+    console.error('Error fetching genres (categories compatibility):', error);
     return [];
   }
   return data || [];
@@ -96,7 +113,7 @@ export async function createCategory(name: string, slug: string) {
 
   // Insert directly - let Supabase handle duplicates
   const { data, error } = await supabase
-    .from('categories')
+    .from('genres')
     .insert([
       {
         name: trimmedName,
@@ -130,8 +147,8 @@ export async function createCategory(name: string, slug: string) {
     
     // Check for RLS policy error (typically code 42501)
     if (error.code === '42501') {
-      console.error('🔐 RLS Permission Error: Check Supabase RLS policies on "categories" table');
-      console.error('Go to Supabase Dashboard → Auth Policies → categories table');
+      console.error('🔐 RLS Permission Error: Check Supabase RLS policies on "genres" table');
+      console.error('Go to Supabase Dashboard → Auth Policies → genres table');
     }
 
     return null;
@@ -143,87 +160,80 @@ export async function createCategory(name: string, slug: string) {
 
 // Link video to categories
 export async function addVideoCategory(videoId: string, categoryId: string) {
+  // DB v2 stores genre relations on anime, not on episode.
+  // For now we implement a best-effort mapping:
+  // 1) find video's anime_id
+  // 2) insert (anime_id, genre_id) into anime_genres
+  const { data: video, error: videoError } = await supabase
+    .from('videos')
+    .select('anime_id')
+    .eq('id', videoId)
+    .single();
+
+  if (videoError || !video?.anime_id) {
+    console.error('Error mapping video->anime for genre:', videoError);
+    return null;
+  }
+
   const { data, error } = await supabase
-    .from('video_categories')
-    .insert([{ video_id: videoId, category_id: categoryId }])
+    .from('anime_genres')
+    .insert([{ anime_id: video.anime_id, genre_id: categoryId }])
     .select()
     .single();
 
   if (error) {
-    console.error('Error adding video category:', error);
+    console.error('Error adding anime genre (categories compatibility):', error);
     return null;
   }
+
   return data;
 }
 
 export async function removeVideoCategory(videoId: string, categoryId: string) {
-  const { error } = await supabase
-    .from('video_categories')
-    .delete()
-    .eq('video_id', videoId)
-    .eq('category_id', categoryId);
+  const { data: video, error: videoError } = await supabase
+    .from('videos')
+    .select('anime_id')
+    .eq('id', videoId)
+    .single();
 
-  if (error) {
-    console.error('Error removing video category:', error);
+  if (videoError || !video?.anime_id) {
+    console.error('Error mapping video->anime for genre removal:', videoError);
     return false;
   }
+
+  const { error } = await supabase
+    .from('anime_genres')
+    .delete()
+    .eq('anime_id', video.anime_id)
+    .eq('genre_id', categoryId);
+
+  if (error) {
+    console.error('Error removing anime genre (categories compatibility):', error);
+    return false;
+  }
+
   return true;
 }
 
 // ===== TAG OPERATIONS =====
 export async function getTags() {
-  const { data, error } = await supabase
-    .from('tags')
-    .select('*')
-    .order('name');
-
-  if (error) {
-    console.error('Error fetching tags:', error);
-    return [];
-  }
-  return data || [];
+  // DB v2 removes tags; keep compatibility export for now.
+  return [];
 }
 
 export async function createTag(name: string) {
-  const { data, error } = await supabase
-    .from('tags')
-    .insert([{ name }])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating tag:', error);
-    return null;
-  }
-  return data;
+  // DB v2 removes tags; keep compatibility export for now.
+  return null;
 }
 
 // Link video to tags
 export async function addVideoTag(videoId: string, tagId: string) {
-  const { data, error } = await supabase
-    .from('video_tags')
-    .insert([{ video_id: videoId, tag_id: tagId }])
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error adding video tag:', error);
-    return null;
-  }
-  return data;
+  // DB v2 removes tags.
+  return null;
 }
 
 export async function removeVideoTag(videoId: string, tagId: string) {
-  const { error } = await supabase
-    .from('video_tags')
-    .delete()
-    .eq('video_id', videoId)
-    .eq('tag_id', tagId);
-
-  if (error) {
-    console.error('Error removing video tag:', error);
-    return false;
-  }
+  // DB v2 removes tags.
   return true;
 }
 
@@ -232,41 +242,274 @@ export async function addVideoServer(videoId: string, data: {
   server_name: string;
   embed_url: string;
 }) {
+  // Compatibility shim:
+  // - DB v2 stores embed URLs directly in videos table
+  // - we can only write "480" embed here (quality selection will be refactored later)
+  const serverName = (data.server_name || '').toLowerCase();
+  const embedUrl = data.embed_url;
+
+  if (!embedUrl) return null;
+
+  const patch =
+    serverName.includes('turbov') || serverName.includes('turboplay') || serverName.includes('turbovip')
+      ? { embed_url_turbovip_480: embedUrl }
+      : serverName.includes('file')
+        ? { embed_url_filedon_480: embedUrl }
+        : {};
+
+  if (Object.keys(patch).length === 0) return null;
+
   const { data: result, error } = await supabase
-    .from('video_servers')
-    .insert([{ video_id: videoId, ...data }])
+    .from('videos')
+    .update(patch)
+    .eq('id', videoId)
     .select()
     .single();
 
   if (error) {
-    console.error('Error adding video server:', error);
+    console.error('Error adding embed (video server compatibility):', error);
+    return null;
+  }
+
+  return result;
+}
+
+export async function removeVideoServer(serverId: string) {
+  // DB v2 no longer uses video_servers.
+  // This function is kept for compatibility until admin is refactored.
+  return true;
+}
+
+export async function getVideoServers(videoId: string) {
+  // DB v2 no longer uses video_servers.
+  // We return a compatibility array (two servers) using quality=480 embeds.
+  const { data: episode, error } = await supabase
+    .from('videos')
+    .select(`
+      id,
+      embed_url_turbovip_480,
+      embed_url_filedon_480
+    `)
+    .eq('id', videoId)
+    .single();
+
+  if (error || !episode) {
+    console.error('Error fetching episode embeds for servers (compat):', error);
+    return [];
+  }
+
+  const out: any[] = [];
+
+  if (episode.embed_url_turbovip_480) {
+    out.push({
+      id: 'turbovip-480',
+      video_id: episode.id,
+      server_name: 'TurboVPlay',
+      embed_url: episode.embed_url_turbovip_480,
+    });
+  }
+
+  if (episode.embed_url_filedon_480) {
+    out.push({
+      id: 'filedon-480',
+      video_id: episode.id,
+      server_name: 'FileDon',
+      embed_url: episode.embed_url_filedon_480,
+    });
+  }
+
+  return out;
+}
+
+// ===== GENRES / ANIME / EPISODE CRUD (new schema) =====
+
+export async function getGenres() {
+  const { data, error } = await supabase.from('genres').select('*').order('name');
+  if (error) {
+    console.error('Error fetching genres:', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function createGenre(name: string, slug: string) {
+  const trimmedName = name?.trim();
+  const trimmedSlug = slug?.toLowerCase().trim();
+  if (!trimmedName || !trimmedSlug) return null;
+
+  const { data, error } = await supabase
+    .from('genres')
+    .insert([{ name: trimmedName, slug: trimmedSlug }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating genre:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function getAnime() {
+  const { data, error } = await supabase
+    .from('anime')
+    .select('*')
+    .order('title');
+
+  if (error) {
+    console.error('Error fetching anime:', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function getEpisodesByAnimeId(animeId: string) {
+  const { data, error } = await supabase
+    .from('videos')
+    .select('*')
+    .eq('anime_id', animeId)
+    .order('episode_number', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching episodes:', error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function updateGenre(id: string, data: { name?: string; slug?: string }) {
+  const { data: result, error } = await supabase
+    .from('genres')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating genre:', error);
     return null;
   }
   return result;
 }
 
-export async function removeVideoServer(serverId: string) {
-  const { error } = await supabase
-    .from('video_servers')
-    .delete()
-    .eq('id', serverId);
-
+export async function deleteGenre(id: string) {
+  const { error } = await supabase.from('genres').delete().eq('id', id);
   if (error) {
-    console.error('Error removing video server:', error);
+    console.error('Error deleting genre:', error);
     return false;
   }
   return true;
 }
 
-export async function getVideoServers(videoId: string) {
+export async function createAnime(animeData: {
+  title: string;
+  slug: string;
+  thumbnail_url?: string;
+  description?: string;
+  release_year?: number;
+  status: 'ongoing' | 'completed';
+  day_of_week?: number | null;
+  total_episodes?: number;
+}) {
   const { data, error } = await supabase
-    .from('video_servers')
-    .select('*')
-    .eq('video_id', videoId);
+    .from('anime')
+    .insert([animeData])
+    .select()
+    .single();
 
   if (error) {
-    console.error('Error fetching video servers:', error);
-    return [];
+    console.error('Error creating anime:', error);
+    return null;
   }
-  return data || [];
+  return data;
+}
+
+export async function updateAnime(id: string, animeData: any) {
+  const { data, error } = await supabase
+    .from('anime')
+    .update(animeData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating anime:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteAnime(id: string) {
+  const { error } = await supabase.from('anime').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting anime:', error);
+    return false;
+  }
+  return true;
+}
+
+export async function replaceAnimeGenres(animeId: string, genreIds: string[]) {
+  // Replace relations atomically-ish (2 calls). For strictness, wrap in SQL transaction later.
+  const { error: delError } = await supabase
+    .from('anime_genres')
+    .delete()
+    .eq('anime_id', animeId);
+
+  if (delError) {
+    console.error('Error clearing anime_genres:', delError);
+    return false;
+  }
+
+  if (!genreIds || genreIds.length === 0) return true;
+
+  const rows = genreIds.map((genreId) => ({ anime_id: animeId, genre_id: genreId }));
+
+  const { error: insError } = await supabase
+    .from('anime_genres')
+    .insert(rows);
+
+  if (insError) {
+    console.error('Error inserting anime_genres:', insError);
+    return false;
+  }
+
+  return true;
+}
+
+export async function createEpisode(episodeData: any) {
+  const { data, error } = await supabase
+    .from('videos')
+    .insert([episodeData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating episode:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function updateEpisode(id: string, episodeData: any) {
+  const { data, error } = await supabase
+    .from('videos')
+    .update(episodeData)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating episode:', error);
+    return null;
+  }
+  return data;
+}
+
+export async function deleteEpisode(id: string) {
+  const { error } = await supabase.from('videos').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting episode:', error);
+    return false;
+  }
+  return true;
 }

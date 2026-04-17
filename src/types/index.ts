@@ -7,10 +7,12 @@ export interface Anime {
   thumbnail_url?: string;
   description?: string;
   release_year?: number;
-  status: 'ongoing' | 'completed' | 'upcoming';
+  status: 'ongoing' | 'completed';
+  // 0..6 for day-of-week (only meaningful for status='ongoing')
+  day_of_week?: number | null;
   total_episodes: number;
   created_at: string;
-  video_categories?: { categories: { id: string; name: string; slug: string } }[];
+  anime_genres?: { genres: { id: string; name: string; slug: string } }[];
 }
 
 export interface Episode {
@@ -20,15 +22,23 @@ export interface Episode {
   episode_number: number;
   episode_title?: string;
   season_number: number;
-  thumbnail_url: string;
+  thumbnail_url: string | null;
   duration_seconds: number;
   views: number;
   release_year?: number;
-  download_url?: string;
   created_at: string;
-  video_categories?: { categories: { name: string } }[];
-  video_tags?: { tags: { name: string } }[];
-  video_servers?: VideoServer[];
+
+  // Embed URLs per server + quality
+  embed_url_turbovip_480?: string | null;
+  embed_url_turbovip_720?: string | null;
+  embed_url_filedon_480?: string | null;
+  embed_url_filedon_720?: string | null;
+
+  // Download URLs per server + quality
+  download_url_turbovip_480?: string | null;
+  download_url_turbovip_720?: string | null;
+  download_url_filedon_480?: string | null;
+  download_url_filedon_720?: string | null;
 }
 
 export interface Video {
@@ -39,15 +49,19 @@ export interface Video {
   duration_seconds: number;
   views: number;
   release_year: number;
-  download_url?: string;
-  // Relasi
-  video_categories?: { categories: { name: string } }[];
-  video_tags?: { tags: { name: string } }[];
-}
+  anime_id: string;
+  episode_number: number;
+  episode_title?: string | null;
 
-export interface VideoServer {
-  id: string;
-  video_id: string;
-  server_name: string;
-  embed_url: string;
+  // Embed URLs per server + quality
+  embed_url_turbovip_480?: string | null;
+  embed_url_turbovip_720?: string | null;
+  embed_url_filedon_480?: string | null;
+  embed_url_filedon_720?: string | null;
+
+  // Download URLs per server + quality
+  download_url_turbovip_480?: string | null;
+  download_url_turbovip_720?: string | null;
+  download_url_filedon_480?: string | null;
+  download_url_filedon_720?: string | null;
 }

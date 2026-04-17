@@ -9,6 +9,8 @@ import { Anime, Episode } from '@/types';
 export default function AnimeDetailPage() {
   const params = useParams();
   const animeId = params.slug as string;
+
+  const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
   
   const [anime, setAnime] = useState<Anime | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
@@ -25,7 +27,12 @@ export default function AnimeDetailPage() {
       // First try by slug
       const { data: slugData, error: slugError } = await supabase
         .from('anime')
-        .select('*')
+        .select(`
+          *,
+          anime_genres (
+            genres (id, name, slug)
+          )
+        `)
         .eq('slug', animeIdentifier)
         .single();
       
@@ -36,7 +43,12 @@ export default function AnimeDetailPage() {
         // If not found by slug, try by ID
         const { data: idData, error: idError } = await supabase
           .from('anime')
-          .select('*')
+          .select(`
+            *,
+            anime_genres (
+              genres (id, name, slug)
+            )
+          `)
           .eq('id', animeIdentifier)
           .single();
         
@@ -52,20 +64,7 @@ export default function AnimeDetailPage() {
         // Fetch episodes for this anime
         const { data: episodesData, error: episodesError } = await supabase
           .from('videos')
-          .select(`
-            *,
-            video_categories (
-              categories (name)
-            ),
-            video_tags (
-              tags (name)
-            ),
-            video_servers (
-              id,
-              server_name,
-              embed_url
-            )
-          `)
+          .select('*')
           .eq('anime_id', animeData.id)
           .order('episode_number', { ascending: true });
 
@@ -144,9 +143,15 @@ export default function AnimeDetailPage() {
                 <span className="px-3 py-1 bg-blue-900/30 border border-blue-600 rounded text-blue-300 text-sm font-semibold">
                   {anime.status === 'ongoing' && '🔴 Ongoing'}
                   {anime.status === 'completed' && '✅ Completed'}
-                  {anime.status === 'upcoming' && '⏰ Upcoming'}
                 </span>
               </div>
+
+              {anime.status === 'ongoing' && anime.day_of_week !== null && anime.day_of_week !== undefined && (
+                <div className="flex items-center gap-3">
+                  <span className="text-gray-400">Hari:</span>
+                  <span className="text-white">{dayNames[anime.day_of_week] || 'N/A'}</span>
+                </div>
+              )}
 
               <div className="flex items-center gap-3">
                 <span className="text-gray-400">Tahun:</span>
@@ -158,17 +163,17 @@ export default function AnimeDetailPage() {
                 <span className="text-white">{anime.total_episodes}</span>
               </div>
 
-              {/* Categories */}
-              {anime.video_categories && anime.video_categories.length > 0 && (
+              {/* Genres */}
+              {anime.anime_genres && anime.anime_genres.length > 0 && (
                 <div className="flex items-start gap-3">
                   <span className="text-gray-400">Genre:</span>
                   <div className="flex flex-wrap gap-2">
-                    {anime.video_categories.map((vc: any, idx: number) => (
+                    {anime.anime_genres.map((ag: any, idx: number) => (
                       <span
                         key={idx}
                         className="px-3 py-1 bg-purple-900/30 border border-purple-600 rounded text-purple-300 text-sm"
                       >
-                        {vc.categories.name}
+                        {ag.genres.name}
                       </span>
                     ))}
                   </div>

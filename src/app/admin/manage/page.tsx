@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import VideoForm from '@/components/admin/VideoForm';
-import { getVideos, deleteVideo } from '@/lib/admin-queries';
+import EpisodeAnimeForm from '@/components/admin/EpisodeAnimeForm';
+import { getVideos } from '@/lib/admin-queries';
 
 export default function ManagePage() {
   const [videos, setVideos] = useState<any[]>([]);
@@ -26,11 +26,23 @@ export default function ManagePage() {
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Hapus video "${title}"?`)) return;
 
-    const success = await deleteVideo(id);
-    if (success) {
-      setVideos(prev => prev.filter(v => v.id !== id));
-      alert('Video berhasil dihapus');
+    const response = await fetch('/api/admin/videos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete',
+        episodeId: id,
+      }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      alert(result.error || 'Gagal menghapus');
+      return;
     }
+
+    setVideos((prev) => prev.filter((v) => v.id !== id));
+    alert('Episode berhasil dihapus');
   };
 
   const handleEdit = (video: any) => {
@@ -196,7 +208,7 @@ export default function ManagePage() {
             </p>
           </div>
 
-          <VideoForm 
+          <EpisodeAnimeForm 
             videoId={editingVideo?.id} 
             initialData={editingVideo}
             onSuccess={handleFormClose}

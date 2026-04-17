@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
     const trimmedName = name.trim();
     const trimmedSlug = slug.toLowerCase().trim();
 
-    console.log('📝 [API] Creating category:', { name: trimmedName, slug: trimmedSlug });
+    console.log('📝 [API] Creating genre:', { name: trimmedName, slug: trimmedSlug });
 
     // Insert using service role (bypasses RLS restrictions)
     const { data, error } = await supabaseAdmin
-      .from('categories')
+      .from('genres')
       .insert([
         {
           name: trimmedName,
@@ -41,11 +41,11 @@ export async function POST(request: NextRequest) {
 
       // Check for duplicate error (PostgreSQL unique constraint)
       if (error.code === '23505' || error.message.includes('duplicate')) {
-        console.warn('⚠️ [API] Duplicate: Kategori sudah ada');
+        console.warn('⚠️ [API] Duplicate: Genre sudah ada');
         
         // Try to fetch and return existing category
         const { data: existing } = await supabaseAdmin
-          .from('categories')
+          .from('genres')
           .select('*')
           .eq('slug', trimmedSlug)
           .single();
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('✅ [API] Category created:', data);
+    console.log('✅ [API] Genre created:', data);
     return NextResponse.json({ data }, { status: 201 });
   } catch (err) {
     console.error('❌ [API] Exception:', err);

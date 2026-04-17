@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 const PAGE_SIZE = 12;
 
-export default async function VideosPage({
+export default async function OngoingPage({
   searchParams,
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -25,15 +25,15 @@ export default async function VideosPage({
   const { data: animeList, count } = await supabase
     .from('anime')
     .select(selectQuery, { count: 'exact' })
-    .order('title', { ascending: true })
+    .eq('status', 'ongoing')
+    .order('created_at', { ascending: false })
     .range(from, to);
 
   const totalItems = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const hasPrev = currentPage > 1;
   const hasNext = currentPage < totalPages;
-
-  const pageHref = (page: number) => `/videos?page=${page}`;
+  const pageHref = (page: number) => `/ongoing?page=${page}`;
 
   return (
     <main className="min-h-screen bg-[#0b0c0f] text-gray-200">
@@ -42,20 +42,16 @@ export default async function VideosPage({
       <div className="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white">Anime List</h1>
+            <h1 className="text-3xl font-bold text-white">On Going Anime</h1>
             <p className="text-gray-400 mt-2">
               Total: {totalItems} anime • Halaman {currentPage} dari {totalPages}
             </p>
           </div>
-
-          <span className="px-4 py-2 rounded-md border border-gray-800 text-sm font-semibold text-gray-300 bg-[#141519]">
-            Urut A-Z
-          </span>
         </div>
 
         {!animeList || animeList.length === 0 ? (
           <div className="bg-[#141519] border border-gray-800 p-12 rounded-xl text-center">
-            <p className="text-gray-400">Belum ada anime untuk section ini.</p>
+            <p className="text-gray-400">Belum ada anime ongoing.</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

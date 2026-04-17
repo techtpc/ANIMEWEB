@@ -1,10 +1,20 @@
 import Link from 'next/link';
-import { Video } from '@/types';
 
 export default function AnimeCard({ video }: { video: any }) {
-  // Jika video punya anime_id, link ke anime detail
-  // Jika tidak, link ke video langsung (fallback untuk backward compatibility)
-  const href = video.anime_id ? `/anime/${video.anime_id}` : `/anime/${video.id}`;
+  // Compat: bisa menerima data episode (`videos`) atau data anime (`anime`)
+  const href = video?.slug
+    ? `/anime/${video.slug}`
+    : video?.anime_id
+      ? `/anime/${video.anime_id}`
+      : `/anime/${video?.id}`;
+
+  const genreName =
+    video?.anime_genres?.[0]?.genres?.name ||
+    video?.video_categories?.[0]?.categories?.name ||
+    'Anime';
+
+  const durationMinutes =
+    typeof video?.duration_seconds === 'number' ? Math.floor(video.duration_seconds / 60) : null;
   
   return (
     <Link href={href} className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500">
@@ -26,11 +36,13 @@ export default function AnimeCard({ video }: { video: any }) {
         </h3>
         <div className="mt-2 flex items-center justify-between">
           <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tighter">
-            {video.video_categories?.length > 0 ? video.video_categories[0]?.categories?.name : 'Anime'} 
+            {genreName}
           </span>
-          <span className="text-[10px] text-gray-400">
-             {Math.floor(video.duration_seconds / 60)}m
-          </span>
+          {durationMinutes !== null ? (
+            <span className="text-[10px] text-gray-400">{durationMinutes}m</span>
+          ) : (
+            <span className="text-[10px] text-gray-400">&nbsp;</span>
+          )}
         </div>
       </div>
     </Link>

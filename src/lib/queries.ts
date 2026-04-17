@@ -6,7 +6,12 @@ import { Anime, Episode } from '@/types';
 export async function getAnimeBySlug(slug: string): Promise<Anime | null> {
   const { data, error } = await supabase
     .from('anime')
-    .select('*')
+    .select(`
+      *,
+      anime_genres (
+        genres (id, name, slug)
+      )
+    `)
     .eq('slug', slug)
     .single();
 
@@ -20,7 +25,12 @@ export async function getAnimeBySlug(slug: string): Promise<Anime | null> {
 export async function getAnimeById(id: string): Promise<Anime | null> {
   const { data, error } = await supabase
     .from('anime')
-    .select('*')
+    .select(`
+      *,
+      anime_genres (
+        genres (id, name, slug)
+      )
+    `)
     .eq('id', id)
     .single();
 
@@ -34,7 +44,12 @@ export async function getAnimeById(id: string): Promise<Anime | null> {
 export async function getAllAnime(): Promise<Anime[]> {
   const { data, error } = await supabase
     .from('anime')
-    .select('*')
+    .select(`
+      *,
+      anime_genres (
+        genres (id, name, slug)
+      )
+    `)
     .order('title');
 
   if (error) {
@@ -48,20 +63,7 @@ export async function getAllAnime(): Promise<Anime[]> {
 export async function getEpisodesByAnimeId(animeId: string): Promise<Episode[]> {
   const { data, error } = await supabase
     .from('videos')
-    .select(`
-      *,
-      video_categories (
-        categories (name)
-      ),
-      video_tags (
-        tags (name)
-      ),
-      video_servers (
-        id,
-        server_name,
-        embed_url
-      )
-    `)
+    .select('*')
     .eq('anime_id', animeId)
     .order('episode_number', { ascending: true });
 
@@ -75,20 +77,7 @@ export async function getEpisodesByAnimeId(animeId: string): Promise<Episode[]> 
 export async function getEpisodeById(episodeId: string): Promise<Episode | null> {
   const { data, error } = await supabase
     .from('videos')
-    .select(`
-      *,
-      video_categories (
-        categories (name)
-      ),
-      video_tags (
-        tags (name)
-      ),
-      video_servers (
-        id,
-        server_name,
-        embed_url
-      )
-    `)
+    .select('*')
     .eq('id', episodeId)
     .single();
 

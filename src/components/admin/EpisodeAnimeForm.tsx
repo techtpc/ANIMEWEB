@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { getCategories } from '@/lib/admin-queries';
+import { getCategories, getAnime } from '@/lib/admin-queries';
 
 type AnimeStatus = 'ongoing' | 'completed';
 
@@ -22,6 +22,7 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
   const [loading, setLoading] = useState(false);
   const [genres, setGenres] = useState<any[]>([]);
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [existingAnimes, setExistingAnimes] = useState<any[]>([]);
 
   const [animeData, setAnimeData] = useState({
     title: '',
@@ -62,6 +63,9 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
       try {
         const genresData = await getCategories();
         setGenres(genresData);
+
+        const animesData = await getAnime();
+        setExistingAnimes(animesData);
 
         if (videoId) {
           // initialData may already contain episode fields, but anime fields likely not.
@@ -135,6 +139,43 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
       .single();
     if (error) return null;
     return data;
+  };
+
+  const handleSelectExistingAnime = async (animeId: string) => {
+    if (!animeId) {
+      setAnimeData({
+        title: '',
+        slug: '',
+        thumbnail_url: '',
+        description: '',
+        release_year: new Date().getFullYear(),
+        status: 'ongoing',
+        day_of_week: 0,
+        total_episodes: 0,
+      });
+      setSelectedGenres([]);
+      return;
+    }
+    const anime = existingAnimes.find((a) => a.id === animeId);
+    if (anime) {
+      setAnimeData({
+        title: anime.title || '',
+        slug: anime.slug || '',
+        thumbnail_url: anime.thumbnail_url || '',
+        description: anime.description || '',
+        release_year: anime.release_year || new Date().getFullYear(),
+        status: anime.status || 'ongoing',
+        day_of_week: anime.day_of_week ?? null,
+        total_episodes: anime.total_episodes ?? 0,
+      });
+      const animeRow = await fetchAnime(animeId);
+      if (animeRow) {
+        const genreIds = (animeRow.anime_genres || [])
+          .map((ag: any) => ag.genres?.id)
+          .filter(Boolean);
+        setSelectedGenres(genreIds);
+      }
+    }
   };
 
   const handleToggleGenre = (genreId: string) => {
@@ -249,6 +290,21 @@ export default function EpisodeAnimeForm({ videoId, initialData, onSuccess }: Ep
       <div className="flex gap-4 flex-1 min-h-0 p-4">
         {/* LEFT COLUMN: Anime */}
         <div className="flex-1 overflow-y-auto space-y-3 scrollbar-thin scrollbar-thumb-blue-600 scrollbar-track-gray-800 pr-4">
+          <div className="bg-slate-800 border border-slate-700 p-3 rounded-lg mb-1">
+             <label className="text-xs font-bold text-slate-300 uppercase block mb-1">Pilih dari Anime yang Tersedia (Opsional)</label>
+             <select
+               onChange={(e) => handleSelectExistingAnime(e.target.value)}
+               className="w-full px-3 py-2 bg-slate-900 border border-slate-600 text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+             >
+               <option value="">-- Setup Anime Baru (Bebas Ketik) --</option>
+               {existingAnimes.map((a) => (
+                 <option key={a.id} value={a.id}>
+                   {a.title} ({a.release_year})
+                 </option>
+               ))}
+             </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="text-xs font-bold text-slate-300 uppercase block mb-1">Judul Anime</label>

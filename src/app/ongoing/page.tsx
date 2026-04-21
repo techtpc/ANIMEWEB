@@ -8,9 +8,10 @@ const PAGE_SIZE = 12;
 export default async function OngoingPage({
   searchParams,
 }: {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const pageParam = typeof searchParams?.page === 'string' ? Number(searchParams.page) : 1;
+  const resolvedSearchParams = await searchParams;
+  const pageParam = typeof resolvedSearchParams?.page === 'string' ? Number(resolvedSearchParams.page) : 1;
   const currentPage = !Number.isNaN(pageParam) && pageParam > 0 ? pageParam : 1;
   const from = (currentPage - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;

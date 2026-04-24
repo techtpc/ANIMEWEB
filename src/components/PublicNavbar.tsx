@@ -14,13 +14,14 @@ export default function PublicNavbar() {
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="relative block group">
-            <div className="relative w-[200px] h-[40px] sm:w-[240px] sm:h-[52px] md:w-[300px] md:h-[70px] lg:w-[320px] lg:h-[80px] transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-[200px] h-[80px] sm:w-[340px] sm:h-[104px] md:w-[300px] md:h-[70px] lg:w-[220px] lg:h-[80px] transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
                 alt="Logo"
                 fill
                 priority
-                className="object-contain object-left"
+                className="object-cover object-left"
+                
               />
             </div>
           </Link>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Anime, Episode } from '@/types';
 
@@ -113,10 +114,18 @@ export default function AnimeDetailPage() {
       {/* Navbar */}
       <nav className="bg-[#141519] border-b border-gray-800 p-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black text-blue-500 italic">
-            SAMEHADAKU<span className="text-white font-normal not-italic">CLONE</span>
+          <Link href="/" className="relative block group">
+            <div className="relative w-[180px] h-[36px] sm:w-[220px] sm:h-[46px] md:w-[280px] md:h-[60px] transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                fill
+                priority
+                className="object-contain object-left"
+              />
+            </div>
           </Link>
-          <Link href="/" className="text-blue-400 hover:text-blue-300 transition">
+          <Link href="/" className="text-blue-400 hover:text-blue-300 transition text-sm md:text-base">
             ← Kembali
           </Link>
         </div>
@@ -166,21 +175,22 @@ export default function AnimeDetailPage() {
 
               <div className="flex items-center gap-3">
                 <span className="text-gray-400">Total Episode:</span>
-                <span className="text-white">{anime.total_episodes}</span>
+                <span className="text-white">{episodes.length}</span>
               </div>
 
-              {/* Genres */}
+              {/* Genres - Clickable */}
               {anime.anime_genres && anime.anime_genres.length > 0 && (
                 <div className="flex items-start gap-3">
                   <span className="text-gray-400">Genre:</span>
                   <div className="flex flex-wrap gap-2">
                     {anime.anime_genres.map((ag: any, idx: number) => (
-                      <span
+                      <Link
                         key={idx}
-                        className="px-3 py-1 bg-purple-900/30 border border-purple-600 rounded text-purple-300 text-sm"
+                        href={`/categories/${ag.genres.slug}`}
+                        className="px-3 py-1 bg-purple-900/30 border border-purple-600 rounded text-purple-300 text-sm hover:bg-purple-800/50 hover:border-purple-400 hover:text-purple-200 transition-all cursor-pointer"
                       >
                         {ag.genres.name}
-                      </span>
+                      </Link>
                     ))}
                   </div>
                 </div>

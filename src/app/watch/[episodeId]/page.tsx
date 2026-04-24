@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { Episode } from '@/types';
 
@@ -132,8 +133,16 @@ export default function WatchPage() {
       {/* Navbar */}
       <nav className="bg-[#141519] border-b border-gray-800 p-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="text-2xl font-black text-blue-500 italic">
-            SAMEHADAKU<span className="text-white font-normal not-italic">CLONE</span>
+          <Link href="/" className="relative block group">
+            <div className="relative w-[180px] h-[36px] sm:w-[220px] sm:h-[46px] md:w-[280px] md:h-[60px] transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Logo"
+                fill
+                priority
+                className="object-contain object-left"
+              />
+            </div>
           </Link>
           {anime && (
             <Link

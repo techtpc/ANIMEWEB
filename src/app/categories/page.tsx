@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import PublicNavbar from '@/components/PublicNavbar';
 import { getCategories } from '@/lib/admin-queries';
 
@@ -24,7 +25,7 @@ export default function CategoriesPage() {
       <div className="max-w-6xl mx-auto space-y-6 p-8">
         <div>
           <h1 className="text-4xl font-bold text-white">Genre</h1>
-          <p className="text-slate-400 mt-2">Filter berdasarkan genre menggunakan tabel `genres` & `anime_genres`</p>
+          <p className="text-slate-400 mt-2">Pilih genre untuk melihat daftar anime</p>
         </div>
 
         {loading ? (
@@ -36,15 +37,16 @@ export default function CategoriesPage() {
             <p className="text-slate-400">Belum ada genre</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {genres.map((g) => (
-              <div
+              <Link
                 key={g.id}
-                className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-lg border border-indigo-500 shadow-lg hover:shadow-indigo-500/50 transition"
+                href={`/categories/${g.slug}`}
+                className="bg-gradient-to-br from-indigo-600 to-indigo-700 p-6 rounded-lg border border-indigo-500 shadow-lg hover:shadow-indigo-500/50 hover:scale-105 transition-all duration-300 cursor-pointer"
               >
                 <h3 className="text-lg font-bold text-white">{g.name}</h3>
-                <p className="text-indigo-200 text-sm mt-2">slug: {g.slug}</p>
-              </div>
+                <p className="text-indigo-200 text-sm mt-2">Lihat anime →</p>
+              </Link>
             ))}
           </div>
         )}

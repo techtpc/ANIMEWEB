@@ -10,7 +10,8 @@ export default async function VideosPage({
 }: {
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const pageParam = typeof searchParams?.page === 'string' ? Number(searchParams.page) : 1;
+  const resolvedParams = await searchParams;
+  const pageParam = typeof resolvedParams?.page === 'string' ? Number(resolvedParams.page) : 1;
   const currentPage = !Number.isNaN(pageParam) && pageParam > 0 ? pageParam : 1;
   const from = (currentPage - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -58,11 +59,49 @@ export default async function VideosPage({
             <p className="text-gray-400">Belum ada anime untuk section ini.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-            {animeList.map((anime: any) => (
-              <AnimeCard key={anime.id} video={anime} />
-            ))}
-          </div>
+          <>
+            {/* Mobile: Title-only list */}
+            <div className="block sm:hidden space-y-1">
+              {animeList.map((anime: any) => {
+                const href = anime?.slug
+                  ? `/anime/${anime.slug}`
+                  : `/anime/${anime?.id}`;
+                const genreName =
+                  anime?.anime_genres?.[0]?.genres?.name || '';
+
+                return (
+                  <Link
+                    key={anime.id}
+                    href={href}
+                    className="flex items-center justify-between gap-2 px-3 py-2.5 bg-[#141519] border border-gray-800 rounded hover:border-blue-500 hover:bg-[#1c1e23] transition-all group"
+                  >
+                    <span className="text-sm font-semibold text-gray-200 group-hover:text-blue-400 transition-colors line-clamp-1">
+                      {anime.title}
+                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {genreName && (
+                        <span className="text-[10px] text-gray-500 uppercase font-bold tracking-tight">
+                          {genreName}
+                        </span>
+                      )}
+                      {anime.release_year && (
+                        <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded font-bold">
+                          {anime.release_year}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Desktop/Tablet: Card grid */}
+            <div className="hidden sm:grid grid-cols-4 lg:grid-cols-6 gap-3">
+              {animeList.map((anime: any) => (
+                <AnimeCard key={anime.id} video={anime} />
+              ))}
+            </div>
+          </>
         )}
 
         <div className="flex items-center justify-center gap-3 pt-4">

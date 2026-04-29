@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Gunakan environment variable atau fallback
   // Di production (Vercel/Netlify), pastikan NEXT_PUBLIC_SITE_URL diset
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://animeweb.vercel.app'; // Ganti dengan domain asli jika sudah ada
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://samehadakuh.online'; // Ganti dengan domain asli jika sudah ada
 
   // Route statis yang ada di aplikasi
   const staticRoutes: MetadataRoute.Sitemap = [

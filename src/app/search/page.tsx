@@ -21,7 +21,8 @@ export default async function SearchPage({
     *,
     anime_genres (
       genres (id, name, slug)
-    )
+    ),
+    videos (episode_number)
   `;
 
   let animeList = [];

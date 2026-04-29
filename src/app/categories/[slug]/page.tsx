@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import PublicNavbar from '@/components/PublicNavbar';
+import AnimeCard from '@/components/AnimeCard';
 import { supabase } from '@/lib/supabase';
 
 export default function GenreDetailPage() {
@@ -41,9 +42,11 @@ export default function GenreDetailPage() {
             thumbnail_url,
             release_year,
             status,
+            day_of_week,
             anime_genres (
               genres (id, name, slug)
-            )
+            ),
+            videos (episode_number)
           )
         `)
         .eq('genre_id', genreData.id);
@@ -166,43 +169,9 @@ export default function GenreDetailPage() {
 
             {/* Desktop/Tablet: Card grid */}
             <div className="hidden sm:grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-              {animeList.map((anime: any) => {
-                const href = anime?.slug
-                  ? `/anime/${anime.slug}`
-                  : `/anime/${anime?.id}`;
-
-                const genreName =
-                  anime?.anime_genres?.[0]?.genres?.name || '';
-
-                return (
-                  <Link
-                    key={anime.id}
-                    href={href}
-                    className="group relative block bg-[#141519] border border-gray-800 rounded overflow-hidden shadow-lg transition-all hover:border-blue-500 hover:shadow-xl"
-                  >
-                    <div className="aspect-[3/4] overflow-hidden relative">
-                      <img
-                        src={anime.thumbnail_url}
-                        alt={anime.title}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-110"
-                      />
-                      <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-bold px-1.5 py-0.5 rounded shadow">
-                        {anime.release_year}
-                      </div>
-                    </div>
-                    <div className="p-2">
-                      <h3 className="text-[10px] font-bold leading-tight line-clamp-2 group-hover:text-blue-400 transition">
-                        {anime.title}
-                      </h3>
-                      {genreName && (
-                        <span className="text-[8px] text-gray-500 uppercase font-bold tracking-tighter mt-1 block">
-                          {genreName}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
+              {animeList.map((anime: any) => (
+                <AnimeCard key={anime.id} video={anime} />
+              ))}
             </div>
           </>
         )}

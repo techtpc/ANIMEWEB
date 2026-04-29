@@ -103,6 +103,9 @@ async function createAnimeEpisode({
     return NextResponse.json({ error: episodeError.message, code: episodeError.code }, { status: 500 });
   }
 
+  // Update anime updated_at so it sorts to the top
+  await supabaseAdmin.from('anime').update({ updated_at: new Date().toISOString() }).eq('id', animeId);
+
   return NextResponse.json({ data: createdEpisode }, { status: 201 });
 }
 
@@ -128,9 +131,11 @@ async function updateAnimeEpisode({
     return NextResponse.json({ error: 'Episode not found' }, { status: 404 });
   }
 
-  // Update anime metadata
+  // Update anime metadata and bump updated_at
   if (animeData) {
-    await supabaseAdmin.from('anime').update(animeData).eq('id', animeId);
+    await supabaseAdmin.from('anime').update({ ...animeData, updated_at: new Date().toISOString() }).eq('id', animeId);
+  } else {
+    await supabaseAdmin.from('anime').update({ updated_at: new Date().toISOString() }).eq('id', animeId);
   }
 
   // Replace genres

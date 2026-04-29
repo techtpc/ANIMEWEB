@@ -7,21 +7,22 @@ export default async function HomePage() {
     *,
     anime_genres (
       genres (id, name, slug)
-    )
+    ),
+    videos (episode_number)
   `;
 
   const { data: ongoingAnime } = await supabase
     .from('anime')
     .select(selectQuery)
     .eq('status', 'ongoing')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(12);
 
   const { data: completedAnime } = await supabase
     .from('anime')
     .select(selectQuery)
     .eq('status', 'completed')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .limit(12);
 
   return (

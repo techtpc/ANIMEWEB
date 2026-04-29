@@ -19,14 +19,15 @@ export default async function CompletedPage({
     *,
     anime_genres (
       genres (id, name, slug)
-    )
+    ),
+    videos (episode_number)
   `;
 
   const { data: animeList, count } = await supabase
     .from('anime')
     .select(selectQuery, { count: 'exact' })
     .eq('status', 'completed')
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false })
     .range(from, to);
 
   const totalItems = count || 0;

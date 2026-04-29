@@ -73,7 +73,7 @@ export default function AnimeDetailPage() {
           .from('videos')
           .select('*')
           .eq('anime_id', animeData.id)
-          .order('episode_number', { ascending: true });
+          .order('episode_number', { ascending: false });
 
         if (!episodesError && episodesData) {
           setEpisodes(episodesData);

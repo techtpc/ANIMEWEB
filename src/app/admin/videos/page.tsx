@@ -4,27 +4,42 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getVideos, deleteVideo } from '@/lib/admin-queries';
 
+const PAGE_SIZE = 20;
+
 export default function VideosPage() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   useEffect(() => {
     const loadVideos = async () => {
       setLoading(true);
-      const data = await getVideos();
-      setVideos(data);
+      const result = await getVideos(page, PAGE_SIZE);
+      setVideos(result.data);
+      setTotalCount(result.count);
+      setTotalPages(result.totalPages);
       setLoading(false);
     };
 
     loadVideos();
-  }, []);
+  }, [page]);
 
   const handleDelete = async (id: string, title: string) => {
     if (!confirm(`Hapus video "${title}"?`)) return;
 
     const success = await deleteVideo(id);
     if (success) {
-      setVideos(prev => prev.filter(v => v.id !== id));
+      // If we deleted the last item on the page and it's not page 1, go back a page
+      if (videos.length === 1 && page > 1) {
+        setPage(page - 1);
+      } else {
+        const result = await getVideos(page, PAGE_SIZE);
+        setVideos(result.data);
+        setTotalCount(result.count);
+        setTotalPages(result.totalPages);
+      }
       alert('Video berhasil dihapus');
     }
   };
@@ -34,7 +49,7 @@ export default function VideosPage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Kelola Video</h2>
-          <p className="text-gray-600 mt-1">Total: {videos.length} video</p>
+          <p className="text-gray-600 mt-1">Total: {totalCount} video</p>
         </div>
         <Link 
           href="/admin/videos/new"
@@ -65,8 +80,8 @@ export default function VideosPage() {
               <thead className="bg-gray-50 border-b">
                 <tr>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Judul</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Kategori</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tags</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Anime</th>
+                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Episode</th>
                   <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Tahun</th>
                   <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">Aksi</th>
                 </tr>
@@ -87,35 +102,32 @@ export default function VideosPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
-                      <div className="flex flex-wrap gap-1">
-                        {video.video_categories?.slice(0, 2).map((vc: any, idx: number) => (
-                          <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                            {vc.categories?.name}
-                          </span>
-                        ))}
-                        {video.video_categories?.length > 2 && (
-                          <span className="px-2 py-1 text-gray-600 text-xs">
-                            +{video.video_categories.length - 2}
-                          </span>
-                        )}
-                      </div>
+                      {video.anime?.title || '-'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
+                      {video.episode_number || '-'}
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
-                        {video.video_tags?.slice(0, 2).map((vt: any, idx: number) => (
-                          <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
-                            {vt.tags?.name}
+                        {video.embed_url_turbovip_480 || video.embed_url_turbovip_720 ? (
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-bold">
+                            Turbovip
                           </span>
-                        ))}
-                        {video.video_tags?.length > 2 && (
-                          <span className="px-2 py-1 text-gray-600 text-xs">
-                            +{video.video_tags.length - 2}
+                        ) : null}
+                        {video.embed_url_filedon_480 || video.embed_url_filedon_720 ? (
+                          <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-bold">
+                            Filedon
                           </span>
-                        )}
+                        ) : null}
+                        {!video.embed_url_turbovip_480 && !video.embed_url_turbovip_720 && !video.embed_url_filedon_480 && !video.embed_url_filedon_720 ? (
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold">
+                            No Server
+                          </span>
+                        ) : null}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 text-center">
-                      {video.release_year}
+                      {video.release_year || video.anime?.release_year || '-'}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center gap-2">
@@ -138,6 +150,47 @@ export default function VideosPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="px-6 py-4 border-t flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Halaman {page} dari {totalPages}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Sebelumnya
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`px-3 py-1 border rounded ${
+                        page === pageNum 
+                          ? 'bg-blue-600 text-white border-blue-600' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Berikutnya →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

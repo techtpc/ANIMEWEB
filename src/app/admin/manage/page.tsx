@@ -5,21 +5,27 @@ import Link from 'next/link';
 import EpisodeAnimeForm from '@/components/admin/EpisodeAnimeForm';
 import { getVideos } from '@/lib/admin-queries';
 
+const PAGE_SIZE = 20;
+
 export default function ManagePage() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [editingVideo, setEditingVideo] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'form'>('list');
 
   useEffect(() => {
     loadVideos();
-  }, []);
+  }, [page]);
 
   const loadVideos = async () => {
     setLoading(true);
-    const data = await getVideos();
-    setVideos(data);
+    const result = await getVideos(page, PAGE_SIZE);
+    setVideos(result.data);
+    setTotalCount(result.count);
+    setTotalPages(result.totalPages);
     setLoading(false);
   };
 
@@ -31,7 +37,7 @@ export default function ManagePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'delete',
-        episodeId: id,
+        videoId: id,
       }),
     });
 
@@ -41,8 +47,13 @@ export default function ManagePage() {
       return;
     }
 
-    setVideos((prev) => prev.filter((v) => v.id !== id));
-    alert('Episode berhasil dihapus');
+    // Refresh current page
+    if (videos.length === 1 && page > 1) {
+      setPage(page - 1);
+    } else {
+      loadVideos();
+    }
+    alert('Video berhasil dihapus');
   };
 
   const handleEdit = (video: any) => {
@@ -91,7 +102,7 @@ export default function ManagePage() {
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-3xl font-bold text-white">Kelola Video</h2>
-              <p className="text-slate-400 mt-1">Total: {videos.length} video</p>
+              <p className="text-slate-400 mt-1">Total: {totalCount} video</p>
             </div>
             <button
               onClick={() => {
@@ -125,9 +136,8 @@ export default function ManagePage() {
                   <thead className="bg-slate-700 border-b border-slate-600">
                     <tr>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Judul</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Studio</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Kategori</th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Links</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Anime</th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Episode</th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-slate-300">Tahun</th>
                       <th className="px-6 py-4 text-center text-sm font-semibold text-slate-300">Aksi</th>
                     </tr>
@@ -148,24 +158,26 @@ export default function ManagePage() {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400">
-                          {video.studios?.name || '-'}
+                          {video.anime?.title || '-'}
                         </td>
-                        <td className="px-6 py-4 text-sm text-slate-400">
+                        <td className="px-6 py-4">
                           <div className="flex flex-wrap gap-1">
-                            {video.video_categories?.slice(0, 2).map((vc: any, i: number) => (
-                              <span key={i} className="px-2 py-1 bg-indigo-600 text-indigo-100 rounded text-xs">
-                                {vc.categories?.name}
+                            {video.embed_url_turbovip_480 || video.embed_url_turbovip_720 ? (
+                              <span className="px-2 py-0.5 bg-blue-600 text-blue-100 rounded text-[10px] font-bold">
+                                Turbovip
                               </span>
-                            ))}
-                            {video.video_categories?.length > 2 && (
-                              <span className="px-2 py-1 text-slate-400 text-xs">
-                                +{video.video_categories.length - 2}
+                            ) : null}
+                            {video.embed_url_filedon_480 || video.embed_url_filedon_720 ? (
+                              <span className="px-2 py-0.5 bg-purple-600 text-purple-100 rounded text-[10px] font-bold">
+                                Filedon
                               </span>
-                            )}
+                            ) : null}
+                            {!video.embed_url_turbovip_480 && !video.embed_url_turbovip_720 && !video.embed_url_filedon_480 && !video.embed_url_filedon_720 ? (
+                              <span className="px-2 py-0.5 bg-red-600 text-red-100 rounded text-[10px] font-bold">
+                                No Server
+                              </span>
+                            ) : null}
                           </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-400">
-                          {video.video_servers?.length || 0} link
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400 text-center">
                           {video.release_year || video.anime?.release_year || '-'}
@@ -191,6 +203,47 @@ export default function ManagePage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="px-6 py-4 border-t border-slate-700 flex items-center justify-between">
+                  <div className="text-sm text-slate-400">
+                    Halaman {page} dari {totalPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1 border border-slate-600 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
+                    >
+                      ← Sebelumnya
+                    </button>
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setPage(pageNum)}
+                          className={`px-3 py-1 border rounded ${
+                            page === pageNum 
+                              ? 'bg-indigo-600 text-white border-indigo-600' 
+                              : 'border-slate-600 hover:bg-slate-700 text-slate-300'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="px-3 py-1 border border-slate-600 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300"
+                    >
+                      Berikutnya →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

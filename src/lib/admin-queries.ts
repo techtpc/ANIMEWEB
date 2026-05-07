@@ -2,8 +2,11 @@
 import { supabase } from './supabase';
 
 // ===== VIDEO OPERATIONS =====
-export async function getVideos() {
-  const { data, error } = await supabase
+export async function getVideos(page: number = 1, pageSize: number = 20) {
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await supabase
     .from('videos')
     .select(`
       id,
@@ -34,14 +37,22 @@ export async function getVideos() {
         status,
         total_episodes
       )
-    `)
-    .order('created_at', { ascending: false });
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(from, to);
 
   if (error) {
     console.error('Error fetching videos:', error);
-    return [];
+    return { data: [], count: 0, totalPages: 0 };
   }
-  return data || [];
+
+  const totalPages = Math.ceil((count || 0) / pageSize);
+
+  return {
+    data: data || [],
+    count: count || 0,
+    totalPages,
+  };
 }
 
 export async function createVideo(videoData: {
@@ -118,7 +129,7 @@ export async function createCategory(name: string, slug: string) {
   const trimmedName = name.trim();
   const trimmedSlug = slug.toLowerCase().trim();
 
-  console.log('📝 Creating category:', { name: trimmedName, slug: trimmedSlug });
+  console.log('📝 Creating genre:', { name: trimmedName, slug: trimmedSlug });
 
   // Insert directly - let Supabase handle duplicates
   const { data, error } = await supabase
@@ -144,10 +155,10 @@ export async function createCategory(name: string, slug: string) {
 
     // Check specific error types
     if (error.code === '23505') {
-      console.warn('⚠️ Duplicate: Kategori "' + trimmedSlug + '" sudah ada');
-      // Try to fetch and return existing category
+      console.warn('⚠️ Duplicate: Genre "' + trimmedSlug + '" already exists');
+      // Try to fetch and return existing genre
       const { data: existing } = await supabase
-        .from('categories')
+        .from('genres')
         .select('*')
         .eq('slug', trimmedSlug)
         .single();
@@ -163,61 +174,36 @@ export async function createCategory(name: string, slug: string) {
     return null;
   }
 
-  console.log('✅ Category created:', data);
+  console.log('✅ Genre created:', data);
   return data;
 }
 
-// Link video to categories
-export async function addVideoCategory(videoId: string, categoryId: string) {
-  // DB v2 stores genre relations on anime, not on episode.
-  // For now we implement a best-effort mapping:
-  // 1) find video's anime_id
-  // 2) insert (anime_id, genre_id) into anime_genres
-  const { data: video, error: videoError } = await supabase
-    .from('videos')
-    .select('anime_id')
-    .eq('id', videoId)
-    .single();
-
-  if (videoError || !video?.anime_id) {
-    console.error('Error mapping video->anime for genre:', videoError);
-    return null;
-  }
-
+// Link anime to genres (replaces old addVideoCategory)
+export async function addAnimeGenre(animeId: string, genreId: string) {
   const { data, error } = await supabase
     .from('anime_genres')
-    .insert([{ anime_id: video.anime_id, genre_id: categoryId }])
+    .insert([{ anime_id: animeId, genre_id: genreId }])
     .select()
     .single();
 
   if (error) {
-    console.error('Error adding anime genre (categories compatibility):', error);
+    console.error('Error adding anime genre:', error);
     return null;
   }
 
   return data;
 }
 
-export async function removeVideoCategory(videoId: string, categoryId: string) {
-  const { data: video, error: videoError } = await supabase
-    .from('videos')
-    .select('anime_id')
-    .eq('id', videoId)
-    .single();
-
-  if (videoError || !video?.anime_id) {
-    console.error('Error mapping video->anime for genre removal:', videoError);
-    return false;
-  }
-
+// Remove anime genre relation (replaces old removeVideoCategory)
+export async function removeAnimeGenre(animeId: string, genreId: string) {
   const { error } = await supabase
     .from('anime_genres')
     .delete()
-    .eq('anime_id', video.anime_id)
-    .eq('genre_id', categoryId);
+    .eq('anime_id', animeId)
+    .eq('genre_id', genreId);
 
   if (error) {
-    console.error('Error removing anime genre (categories compatibility):', error);
+    console.error('Error removing anime genre:', error);
     return false;
   }
 
@@ -225,109 +211,66 @@ export async function removeVideoCategory(videoId: string, categoryId: string) {
 }
 
 // ===== TAG OPERATIONS =====
+// Note: DB v2 removes tags - tags functionality deprecated
+// Keep empty functions for backward compatibility with admin UI
 export async function getTags() {
-  // DB v2 removes tags; keep compatibility export for now.
+  console.warn('Tags are deprecated in DB v2');
   return [];
 }
 
 export async function createTag(name: string) {
-  // DB v2 removes tags; keep compatibility export for now.
+  console.warn('Tags are deprecated in DB v2');
   return null;
 }
 
-// Link video to tags
 export async function addVideoTag(videoId: string, tagId: string) {
-  // DB v2 removes tags.
+  console.warn('Tags are deprecated in DB v2');
   return null;
 }
 
 export async function removeVideoTag(videoId: string, tagId: string) {
-  // DB v2 removes tags.
+  console.warn('Tags are deprecated in DB v2');
   return true;
 }
 
 // ===== VIDEO SERVER OPERATIONS =====
-export async function addVideoServer(videoId: string, data: {
-  server_name: string;
-  embed_url: string;
-}) {
-  // Compatibility shim:
-  // - DB v2 stores embed URLs directly in videos table
-  // - we can only write "480" embed here (quality selection will be refactored later)
-  const serverName = (data.server_name || '').toLowerCase();
-  const embedUrl = data.embed_url;
+// Note: DB v2 stores embed URLs directly in videos table
+// Server management is done via direct column updates (embed_url_turbovip_480, etc.)
 
-  if (!embedUrl) return null;
-
-  const patch =
-    serverName.includes('turbov') || serverName.includes('turboplay') || serverName.includes('turbovip')
-      ? { embed_url_turbovip_480: embedUrl }
-      : serverName.includes('file')
-        ? { embed_url_filedon_480: embedUrl }
-        : {};
-
-  if (Object.keys(patch).length === 0) return null;
-
-  const { data: result, error } = await supabase
+export async function addVideoEmbed(videoId: string, server: 'turbovip' | 'filedon', quality: 480 | 720, embedUrl: string) {
+  const column = `embed_url_${server}_${quality}` as keyof any;
+  
+  const { data, error } = await supabase
     .from('videos')
-    .update(patch)
+    .update({ [column]: embedUrl })
     .eq('id', videoId)
     .select()
     .single();
 
   if (error) {
-    console.error('Error adding embed (video server compatibility):', error);
+    console.error('Error adding video embed:', error);
     return null;
   }
 
-  return result;
+  return data;
 }
 
-export async function removeVideoServer(serverId: string) {
-  // DB v2 no longer uses video_servers.
-  // This function is kept for compatibility until admin is refactored.
-  return true;
-}
-
-export async function getVideoServers(videoId: string) {
-  // DB v2 no longer uses video_servers.
-  // We return a compatibility array (two servers) using quality=480 embeds.
-  const { data: episode, error } = await supabase
+export async function addVideoDownload(videoId: string, server: 'turbovip' | 'filedon', quality: 480 | 720, downloadUrl: string) {
+  const column = `download_url_${server}_${quality}` as keyof any;
+  
+  const { data, error } = await supabase
     .from('videos')
-    .select(`
-      id,
-      embed_url_turbovip_480,
-      embed_url_filedon_480
-    `)
+    .update({ [column]: downloadUrl })
     .eq('id', videoId)
+    .select()
     .single();
 
-  if (error || !episode) {
-    console.error('Error fetching episode embeds for servers (compat):', error);
-    return [];
+  if (error) {
+    console.error('Error adding video download:', error);
+    return null;
   }
 
-  const out: any[] = [];
-
-  if (episode.embed_url_turbovip_480) {
-    out.push({
-      id: 'turbovip-480',
-      video_id: episode.id,
-      server_name: 'TurboVPlay',
-      embed_url: episode.embed_url_turbovip_480,
-    });
-  }
-
-  if (episode.embed_url_filedon_480) {
-    out.push({
-      id: 'filedon-480',
-      video_id: episode.id,
-      server_name: 'FileDon',
-      embed_url: episode.embed_url_filedon_480,
-    });
-  }
-
-  return out;
+  return data;
 }
 
 // ===== GENRES / ANIME / EPISODE CRUD (new schema) =====

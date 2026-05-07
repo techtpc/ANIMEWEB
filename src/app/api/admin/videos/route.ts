@@ -12,29 +12,48 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    // For backward compatibility with old client payloads
-    const episodeId: string | undefined = body.episodeId || body.videoId;
-
+    const videoId: string | undefined = body.videoId || body.episodeId;
     const animeData = body.animeData || null;
-    const episodeData = body.episodeData || body.videoData || null;
+    const videoData = body.videoData || body.episodeData || null;
     const genreIds: string[] = body.genreIds || body.categories || body.selectedGenres || [];
 
     if (action === 'create') {
-      return await createAnimeEpisode({ animeData, episodeData, genreIds });
+      return await createAnimeVideo({ animeData, videoData, genreIds });
     }
 
     if (action === 'update') {
-      if (!episodeId) {
-        return NextResponse.json({ error: 'episodeId is required' }, { status: 400 });
+      if (!videoId) {
+        return NextResponse.json({ error: 'videoId is required' }, { status: 400 });
       }
-      return await updateAnimeEpisode({ episodeId, animeData, episodeData, genreIds });
+      return await updateAnimeVideo({ videoId, animeData, videoData, genreIds });
     }
 
     if (action === 'delete') {
-      if (!episodeId) {
-        return NextResponse.json({ error: 'episodeId is required' }, { status: 400 });
+      if (!videoId) {
+        return NextResponse.json({ error: 'videoId is required' }, { status: 400 });
       }
-      return await deleteEpisode(episodeId);
+      return await deleteVideo(videoId);
+    }
+
+    if (action === 'updateEmbeds') {
+      if (!videoId) {
+        return NextResponse.json({ error: 'videoId is required' }, { status: 400 });
+      }
+      return await updateEmbeds(videoId, body.embeds, body.downloads);
+    }
+
+    if (action === 'addGenre') {
+      if (!videoId || !body.genreId) {
+        return NextResponse.json({ error: 'videoId and genreId are required' }, { status: 400 });
+      }
+      return await addAnimeGenre(videoId, body.genreId);
+    }
+
+    if (action === 'removeGenre') {
+      if (!videoId || !body.genreId) {
+        return NextResponse.json({ error: 'videoId and genreId are required' }, { status: 400 });
+      }
+      return await removeAnimeGenre(videoId, body.genreId);
     }
 
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
@@ -45,20 +64,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function createAnimeEpisode({
+async function createAnimeVideo({
   animeData,
-  episodeData,
+  videoData,
   genreIds,
 }: {
   animeData: any;
-  episodeData: any;
+  videoData: any;
   genreIds: string[];
 }) {
   if (!animeData || !animeData.slug) {
     return NextResponse.json({ error: 'animeData.slug is required' }, { status: 400 });
   }
-  if (!episodeData || typeof episodeData.episode_number !== 'number') {
-    return NextResponse.json({ error: 'episodeData.episode_number is required' }, { status: 400 });
+  if (!videoData || typeof videoData.episode_number !== 'number') {
+    return NextResponse.json({ error: 'videoData.episode_number is required' }, { status: 400 });
   }
 
   // 1) Create anime
@@ -91,44 +110,44 @@ async function createAnimeEpisode({
     await supabaseAdmin.from('anime_genres').insert(genreIds.map((gid) => ({ anime_id: animeId, genre_id: gid })));
   }
 
-  // 3) Create episode
-  const { data: createdEpisode, error: episodeError } = await supabaseAdmin
+  // 3) Create video/episode
+  const { data: createdVideo, error: videoError } = await supabaseAdmin
     .from('videos')
-    .insert([{ ...episodeData, anime_id: animeId }])
+    .insert([{ ...videoData, anime_id: animeId }])
     .select()
     .single();
 
-  if (episodeError) {
-    console.error('❌ [API] Episode create error:', episodeError);
-    return NextResponse.json({ error: episodeError.message, code: episodeError.code }, { status: 500 });
+  if (videoError) {
+    console.error('❌ [API] Video create error:', videoError);
+    return NextResponse.json({ error: videoError.message, code: videoError.code }, { status: 500 });
   }
 
   // Update anime updated_at so it sorts to the top
   await supabaseAdmin.from('anime').update({ updated_at: new Date().toISOString() }).eq('id', animeId);
 
-  return NextResponse.json({ data: createdEpisode }, { status: 201 });
+  return NextResponse.json({ data: createdVideo }, { status: 201 });
 }
 
-async function updateAnimeEpisode({
-  episodeId,
+async function updateAnimeVideo({
+  videoId,
   animeData,
-  episodeData,
+  videoData,
   genreIds,
 }: {
-  episodeId: string;
+  videoId: string;
   animeData: any;
-  episodeData: any;
+  videoData: any;
   genreIds: string[];
 }) {
-  const { data: existingEpisode } = await supabaseAdmin
+  const { data: existingVideo } = await supabaseAdmin
     .from('videos')
     .select('anime_id')
-    .eq('id', episodeId)
+    .eq('id', videoId)
     .single();
 
-  const animeId = existingEpisode?.anime_id;
+  const animeId = existingVideo?.anime_id;
   if (!animeId) {
-    return NextResponse.json({ error: 'Episode not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Video not found' }, { status: 404 });
   }
 
   // Update anime metadata and bump updated_at
@@ -146,27 +165,113 @@ async function updateAnimeEpisode({
       .insert(genreIds.map((gid) => ({ anime_id: animeId, genre_id: gid })));
   }
 
-  // Update episode
-  const { data: updatedEpisode, error: episodeError } = await supabaseAdmin
+  // Update video
+  const { data: updatedVideo, error: videoError } = await supabaseAdmin
     .from('videos')
-    .update(episodeData)
-    .eq('id', episodeId)
+    .update(videoData)
+    .eq('id', videoId)
     .select()
     .single();
 
-  if (episodeError) {
-    console.error('❌ [API] Episode update error:', episodeError);
-    return NextResponse.json({ error: episodeError.message, code: episodeError.code }, { status: 500 });
+  if (videoError) {
+    console.error('❌ [API] Video update error:', videoError);
+    return NextResponse.json({ error: videoError.message, code: videoError.code }, { status: 500 });
   }
 
-  return NextResponse.json({ data: updatedEpisode }, { status: 200 });
+  return NextResponse.json({ data: updatedVideo }, { status: 200 });
 }
 
-async function deleteEpisode(episodeId: string) {
-  const { error } = await supabaseAdmin.from('videos').delete().eq('id', episodeId);
+async function deleteVideo(videoId: string) {
+  const { error } = await supabaseAdmin.from('videos').delete().eq('id', videoId);
   if (error) {
-    console.error('❌ [API] Episode delete error:', error);
+    console.error('❌ [API] Video delete error:', error);
     return NextResponse.json({ error: error.message, code: error.code }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true }, { status: 200 });
+}
+
+async function updateEmbeds(videoId: string, embeds: any, downloads: any) {
+  const updateData: any = {};
+
+  // Add embed URLs
+  if (embeds) {
+    if (embeds.turbovip_480) updateData.embed_url_turbovip_480 = embeds.turbovip_480;
+    if (embeds.turbovip_720) updateData.embed_url_turbovip_720 = embeds.turbovip_720;
+    if (embeds.filedon_480) updateData.embed_url_filedon_480 = embeds.filedon_480;
+    if (embeds.filedon_720) updateData.embed_url_filedon_720 = embeds.filedon_720;
+  }
+
+  // Add download URLs
+  if (downloads) {
+    if (downloads.turbovip_480) updateData.download_url_turbovip_480 = downloads.turbovip_480;
+    if (downloads.turbovip_720) updateData.download_url_turbovip_720 = downloads.turbovip_720;
+    if (downloads.filedon_480) updateData.download_url_filedon_480 = downloads.filedon_480;
+    if (downloads.filedon_720) updateData.download_url_filedon_720 = downloads.filedon_720;
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('videos')
+    .update(updateData)
+    .eq('id', videoId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ [API] Update embeds error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ data }, { status: 200 });
+}
+
+async function addAnimeGenre(videoId: string, genreId: string) {
+  // Get anime_id from video
+  const { data: video } = await supabaseAdmin
+    .from('videos')
+    .select('anime_id')
+    .eq('id', videoId)
+    .single();
+
+  if (!video?.anime_id) {
+    return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('anime_genres')
+    .insert([{ anime_id: video.anime_id, genre_id: genreId }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('❌ [API] Add genre error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ data }, { status: 200 });
+}
+
+async function removeAnimeGenre(videoId: string, genreId: string) {
+  // Get anime_id from video
+  const { data: video } = await supabaseAdmin
+    .from('videos')
+    .select('anime_id')
+    .eq('id', videoId)
+    .single();
+
+  if (!video?.anime_id) {
+    return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+  }
+
+  const { error } = await supabaseAdmin
+    .from('anime_genres')
+    .delete()
+    .eq('anime_id', video.anime_id)
+    .eq('genre_id', genreId);
+
+  if (error) {
+    console.error('❌ [API] Remove genre error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   return NextResponse.json({ success: true }, { status: 200 });
